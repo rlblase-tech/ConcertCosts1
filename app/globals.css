@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark, cupcake, synthwave, retro, cyberpunk, valentine, aqua, forest, night;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
