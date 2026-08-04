@@ -11,3 +11,33 @@ body {
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* Full-page concert photo with dark overlay for readable cards */
+.app-photo-bg {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.app-photo-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image: url("/concert-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.app-photo-bg::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to bottom,
+    oklch(0% 0 0 / 0.55),
+    oklch(0% 0 0 / 0.72)
+  );
+}

@@ -18,6 +18,7 @@ export type Concert = {
   travel_cost: number;
   other_cost: number;
   fun_rating: number;
+  venue_fun_rating: number;
   notes: string | null;
   created_at: string;
 };

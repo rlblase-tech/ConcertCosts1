@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import {
   DollarSign,
   Heart,
@@ -11,10 +10,12 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { EmptyState } from "@/components/EmptyState";
+import { FunAveragesList } from "@/components/FunAveragesList";
 import { StatCard } from "@/components/StatCard";
 import { DashboardCharts } from "@/components/charts/DashboardCharts";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 import {
+  averageFunBy,
   concertMetrics,
   computeDashboardStats,
   formatCurrency,
@@ -23,12 +24,7 @@ import {
 import type { Concert } from "@/lib/types";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data, error } = await supabase
     .from("concerts")
@@ -37,6 +33,8 @@ export default async function DashboardPage() {
 
   const concerts = (data ?? []) as Concert[];
   const stats = computeDashboardStats(concerts);
+  const venueAverages = averageFunBy(concerts, "venue");
+  const artistAverages = averageFunBy(concerts, "artist");
 
   const bestValueMetrics = stats.bestValue
     ? concertMetrics(stats.bestValue)
@@ -85,7 +83,7 @@ export default async function DashboardPage() {
                 icon={<DollarSign className="h-4 w-4" />}
               />
               <StatCard
-                label="Avg fun rating"
+                label="Avg concert fun"
                 value={
                   stats.avgFun !== null
                     ? `${formatNumber(stats.avgFun, 1)} / 10`
@@ -123,14 +121,27 @@ export default async function DashboardPage() {
                 icon={<Trophy className="h-4 w-4" />}
               />
               <StatCard
-                label="Highest fun rating"
-                value={stats.highestFun?.concert_name ?? "—"}
+                label="Highest concert fun"
+                value={stats.highestFun?.artist ?? "—"}
                 hint={
                   stats.highestFun
-                    ? `${stats.highestFun.fun_rating}/10 fun`
+                    ? `${stats.highestFun.fun_rating}/10 concert fun`
                     : undefined
                 }
                 icon={<Heart className="h-4 w-4" />}
+              />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <FunAveragesList
+                title="Your venue fun averages"
+                subtitle="From your venue fun scores only"
+                rows={venueAverages}
+              />
+              <FunAveragesList
+                title="Your concert fun by artist"
+                subtitle="From your concert fun ratings only"
+                rows={artistAverages}
               />
             </div>
 

@@ -4,29 +4,62 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { COST_FIELDS } from "@/lib/types";
-import { formatCurrency, totalCost, toNumber } from "@/lib/metrics";
+import { formatCurrency, toNumber } from "@/lib/metrics";
 
 const EMPTY_FORM = {
-  concert_name: "",
   artist: "",
   venue: "",
-  city: "",
-  state: "",
-  concert_date: "",
-  distance_from_home: "0",
-  hours_at_event: "3",
   ticket_cost: "0",
-  ticket_fees: "0",
-  parking_cost: "0",
-  food_drink_cost: "0",
-  merchandise_cost: "0",
-  lodging_cost: "0",
-  travel_cost: "0",
-  other_cost: "0",
   fun_rating: "7",
-  notes: "",
+  venue_fun_rating: "7",
 };
+
+const GLASS =
+  "rounded-2xl border border-white/25 bg-white/15 backdrop-blur-md shadow-lg";
+
+function RatingBlock({
+  title,
+  helper,
+  value,
+  onChange,
+}: {
+  title: string;
+  helper: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-semibold text-base text-base-content drop-shadow-sm">
+          {title}
+        </h3>
+        <p className="text-sm text-base-content/70">{helper}</p>
+      </div>
+      <div className="flex justify-between text-sm font-medium gap-2">
+        <span className="text-base-content/80">1 — Terrible</span>
+        <span className="text-primary text-lg font-bold bg-base-100/80 px-2 rounded-lg">
+          {value}/10
+        </span>
+        <span className="text-base-content/80">10 — Best Ever</span>
+      </div>
+      <input
+        type="range"
+        min="1"
+        max="10"
+        step="1"
+        className="range range-primary"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <div className="flex w-full justify-between px-1 text-xs text-base-content/60">
+        {Array.from({ length: 10 }, (_, i) => (
+          <span key={i}>{i + 1}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ConcertForm() {
   const router = useRouter();
@@ -35,19 +68,9 @@ export function ConcertForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const liveTotal = useMemo(
-    () =>
-      totalCost({
-        ticket_cost: toNumber(form.ticket_cost),
-        ticket_fees: toNumber(form.ticket_fees),
-        parking_cost: toNumber(form.parking_cost),
-        food_drink_cost: toNumber(form.food_drink_cost),
-        merchandise_cost: toNumber(form.merchandise_cost),
-        lodging_cost: toNumber(form.lodging_cost),
-        travel_cost: toNumber(form.travel_cost),
-        other_cost: toNumber(form.other_cost),
-      }),
-    [form]
+  const ticketTotal = useMemo(
+    () => toNumber(form.ticket_cost),
+    [form.ticket_cost]
   );
 
   function update(field: keyof typeof EMPTY_FORM, value: string) {
@@ -61,26 +84,29 @@ export function ConcertForm() {
     setError(null);
     setSuccess(false);
 
-    const hours = toNumber(form.hours_at_event);
+    const artist = form.artist.trim();
+    const venue = form.venue.trim();
     const fun = Math.round(toNumber(form.fun_rating));
+    const venueFun = Math.round(toNumber(form.venue_fun_rating));
+    const ticket = toNumber(form.ticket_cost);
 
-    if (!form.concert_name.trim() || !form.artist.trim() || !form.venue.trim()) {
-      setError("Please fill in concert name, artist, and venue.");
+    if (!artist || !venue) {
+      setError("Please fill in artist and venue.");
       setLoading(false);
       return;
     }
-    if (!form.city.trim() || !form.state.trim() || !form.concert_date) {
-      setError("Please fill in city, state, and concert date.");
-      setLoading(false);
-      return;
-    }
-    if (hours <= 0) {
-      setError("Hours at the event should be greater than zero.");
+    if (ticket < 0) {
+      setError("Ticket cost can’t be negative.");
       setLoading(false);
       return;
     }
     if (fun < 1 || fun > 10) {
-      setError("Fun rating must be between 1 and 10.");
+      setError("Concert fun rating must be between 1 and 10.");
+      setLoading(false);
+      return;
+    }
+    if (venueFun < 1 || venueFun > 10) {
+      setError("Venue fun score must be between 1 and 10.");
       setLoading(false);
       return;
     }
@@ -96,26 +122,29 @@ export function ConcertForm() {
       return;
     }
 
+    const today = new Date().toISOString().slice(0, 10);
+
     const { error: insertError } = await supabase.from("concerts").insert({
       user_id: user.id,
-      concert_name: form.concert_name.trim(),
-      artist: form.artist.trim(),
-      venue: form.venue.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      concert_date: form.concert_date,
-      distance_from_home: toNumber(form.distance_from_home),
-      hours_at_event: hours,
-      ticket_cost: toNumber(form.ticket_cost),
-      ticket_fees: toNumber(form.ticket_fees),
-      parking_cost: toNumber(form.parking_cost),
-      food_drink_cost: toNumber(form.food_drink_cost),
-      merchandise_cost: toNumber(form.merchandise_cost),
-      lodging_cost: toNumber(form.lodging_cost),
-      travel_cost: toNumber(form.travel_cost),
-      other_cost: toNumber(form.other_cost),
+      concert_name: `${artist} at ${venue}`,
+      artist,
+      venue,
+      city: "—",
+      state: "—",
+      concert_date: today,
+      distance_from_home: 0,
+      hours_at_event: 1,
+      ticket_cost: ticket,
+      ticket_fees: 0,
+      parking_cost: 0,
+      food_drink_cost: 0,
+      merchandise_cost: 0,
+      lodging_cost: 0,
+      travel_cost: 0,
+      other_cost: 0,
       fun_rating: fun,
-      notes: form.notes.trim() || null,
+      venue_fun_rating: venueFun,
+      notes: null,
     });
 
     setLoading(false);
@@ -131,194 +160,109 @@ export function ConcertForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div role="alert" className="alert alert-error">
+        <div role="alert" className="alert alert-error shadow-lg">
           <span>{error}</span>
         </div>
       )}
       {success && (
-        <div role="alert" className="alert alert-success">
+        <div role="alert" className="alert alert-success shadow-lg">
           <CheckCircle2 className="h-5 w-5" />
-          <span>Concert saved! Add another, or check My Concerts / Dashboard.</span>
+          <span>
+            Concert saved! Check My Concerts for both concert and venue scores.
+          </span>
         </div>
       )}
 
-      <section className="card bg-base-100 shadow-md border border-base-300">
-        <div className="card-body gap-4">
-          <div>
-            <h2 className="card-title text-lg">Concert details</h2>
-            <p className="text-sm text-base-content/60">
-              Who you saw, where, and when
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field
-              label="Concert name"
-              required
-              help="A name you’ll recognize later"
-            >
-              <input
-                className="input input-bordered w-full"
-                value={form.concert_name}
-                onChange={(e) => update("concert_name", e.target.value)}
-                placeholder="Summer Stadium Night"
-                required
-              />
-            </Field>
-            <Field label="Artist or band" required>
-              <input
-                className="input input-bordered w-full"
-                value={form.artist}
-                onChange={(e) => update("artist", e.target.value)}
-                placeholder="The Midnight Lights"
-                required
-              />
-            </Field>
-            <Field label="Venue" required>
-              <input
-                className="input input-bordered w-full"
-                value={form.venue}
-                onChange={(e) => update("venue", e.target.value)}
-                placeholder="Main Street Amphitheater"
-                required
-              />
-            </Field>
-            <Field label="City" required>
-              <input
-                className="input input-bordered w-full"
-                value={form.city}
-                onChange={(e) => update("city", e.target.value)}
-                placeholder="Austin"
-                required
-              />
-            </Field>
-            <Field label="State" required>
-              <input
-                className="input input-bordered w-full"
-                value={form.state}
-                onChange={(e) => update("state", e.target.value)}
-                placeholder="TX"
-                required
-              />
-            </Field>
-            <Field label="Concert date" required>
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                value={form.concert_date}
-                onChange={(e) => update("concert_date", e.target.value)}
-                required
-              />
-            </Field>
-            <Field
-              label="Distance from home (miles)"
-              help="Rough estimate is fine"
-            >
-              <input
-                type="number"
-                min="0"
-                step="any"
-                className="input input-bordered w-full"
-                value={form.distance_from_home}
-                onChange={(e) => update("distance_from_home", e.target.value)}
-              />
-            </Field>
-            <Field
-              label="Hours at the event"
-              required
-              help="Used for cost-per-hour math"
-            >
-              <input
-                type="number"
-                min="0.1"
-                step="any"
-                className="input input-bordered w-full"
-                value={form.hours_at_event}
-                onChange={(e) => update("hours_at_event", e.target.value)}
-                required
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label="Notes" help="Optional — setlist, friends, vibes…">
-                <textarea
-                  className="textarea textarea-bordered w-full min-h-24"
-                  value={form.notes}
-                  onChange={(e) => update("notes", e.target.value)}
-                  placeholder="Anything else worth remembering"
-                />
-              </Field>
-            </div>
-          </div>
+      {/* Details */}
+      <section className={`${GLASS} p-4 sm:p-5 space-y-4`}>
+        <div>
+          <h2 className="text-lg font-bold tracking-tight drop-shadow-sm">
+            Concert details
+          </h2>
+          <p className="text-sm text-base-content/75">
+            Who you saw and where you saw them
+          </p>
         </div>
-      </section>
-
-      <section className="card bg-base-100 shadow-md border border-base-300">
-        <div className="card-body gap-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="card-title text-lg">Costs</h2>
-              <p className="text-sm text-base-content/60">
-                Enter $0 for anything you didn’t spend
-              </p>
-            </div>
-            <div className="badge badge-lg badge-primary badge-outline gap-1 py-3">
-              Total: <strong>{formatCurrency(liveTotal)}</strong>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {COST_FIELDS.map(({ key, label }) => (
-              <Field key={key} label={label}>
-                <label className="input input-bordered flex items-center gap-2 w-full">
-                  <span className="opacity-60">$</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="grow"
-                    value={form[key]}
-                    onChange={(e) => update(key, e.target.value)}
-                  />
-                </label>
-              </Field>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="card bg-base-100 shadow-md border border-base-300">
-        <div className="card-body gap-4">
-          <div>
-            <h2 className="card-title text-lg">Fun rating</h2>
-            <p className="text-sm text-base-content/60">
-              How much fun was this show?
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-between text-sm font-medium">
-              <span>1 — Terrible Time</span>
-              <span className="text-primary text-lg font-bold">
-                {form.fun_rating}/10
-              </span>
-              <span>10 — Best Time Ever</span>
-            </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Artist or band" required>
             <input
-              type="range"
-              min="1"
-              max="10"
-              step="1"
-              className="range range-primary"
-              value={form.fun_rating}
-              onChange={(e) => update("fun_rating", e.target.value)}
+              className="input input-bordered w-full bg-base-100/90"
+              value={form.artist}
+              onChange={(e) => update("artist", e.target.value)}
+              placeholder="The Midnight Lights"
+              required
             />
-            <div className="flex w-full justify-between px-1 text-xs opacity-50">
-              {Array.from({ length: 10 }, (_, i) => (
-                <span key={i}>{i + 1}</span>
-              ))}
-            </div>
+          </Field>
+          <Field label="Venue" required>
+            <input
+              className="input input-bordered w-full bg-base-100/90"
+              value={form.venue}
+              onChange={(e) => update("venue", e.target.value)}
+              placeholder="Main Street Amphitheater"
+              required
+            />
+          </Field>
+        </div>
+      </section>
+
+      {/* Ticket */}
+      <section className={`${GLASS} p-4 sm:p-5 space-y-4`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight drop-shadow-sm">
+              Ticket cost
+            </h2>
+            <p className="text-sm text-base-content/75">
+              What you paid for admission
+            </p>
+          </div>
+          <div className="badge badge-lg badge-primary gap-1 py-3 shadow">
+            Total: <strong>{formatCurrency(ticketTotal)}</strong>
+          </div>
+        </div>
+        <Field label="Ticket cost">
+          <label className="input input-bordered flex items-center gap-2 w-full max-w-xs bg-base-100/90">
+            <span className="opacity-60">$</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="grow"
+              value={form.ticket_cost}
+              onChange={(e) => update("ticket_cost", e.target.value)}
+            />
+          </label>
+        </Field>
+      </section>
+
+      {/* Concert fun + Venue fun together */}
+      <section className={`${GLASS} p-4 sm:p-5 space-y-5`}>
+        <div>
+          <h2 className="text-lg font-bold tracking-tight drop-shadow-sm">
+            Fun scores
+          </h2>
+          <p className="text-sm text-base-content/75">
+            Rate the concert overall and the venue separately (1–10)
+          </p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <div className="rounded-xl border border-white/20 bg-base-100/20 p-4">
+            <RatingBlock
+              title="Concert fun rating"
+              helper="How fun was this concert overall?"
+              value={form.fun_rating}
+              onChange={(v) => update("fun_rating", v)}
+            />
+          </div>
+          <div className="rounded-xl border border-white/20 bg-base-100/20 p-4">
+            <RatingBlock
+              title="Venue fun score"
+              helper="How fun was the venue itself?"
+              value={form.venue_fun_rating}
+              onChange={(v) => update("venue_fun_rating", v)}
+            />
           </div>
         </div>
       </section>
@@ -326,7 +270,7 @@ export function ConcertForm() {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="btn btn-primary btn-lg"
+          className="btn btn-primary btn-lg shadow-lg"
           disabled={loading}
         >
           {loading ? (
@@ -354,7 +298,7 @@ function Field({
   return (
     <div className="form-control w-full gap-1">
       <label className="label py-0">
-        <span className="label-text font-medium">
+        <span className="label-text font-semibold text-base-content">
           {label}
           {required && <span className="text-error"> *</span>}
         </span>
@@ -362,7 +306,7 @@ function Field({
       {children}
       {help && (
         <label className="label py-0">
-          <span className="label-text-alt text-base-content/50">{help}</span>
+          <span className="label-text-alt text-base-content/70">{help}</span>
         </label>
       )}
     </div>

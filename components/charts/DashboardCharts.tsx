@@ -105,7 +105,7 @@ export function DashboardCharts({ concerts, stats }: Props) {
         )}
       </ChartCard>
 
-      <ChartCard title="Fun rating by concert">
+      <ChartCard title="Concert fun rating by concert">
         {byConcert.length === 0 ? (
           <ChartEmpty />
         ) : (

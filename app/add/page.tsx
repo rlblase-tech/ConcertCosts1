@@ -1,23 +1,19 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ConcertForm } from "@/components/ConcertForm";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 
 export default async function AddConcertPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { user } = await requireUser();
 
   return (
     <AppShell user={user}>
       <div className="space-y-6 max-w-3xl">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Add Concert</h2>
-          <p className="text-base-content/60 text-sm sm:text-base">
-            Save the details, costs, and fun rating for a show you attended
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-base-content drop-shadow-md">
+            Add Concert
+          </h2>
+          <p className="text-base-content/80 text-sm sm:text-base drop-shadow-sm">
+            Artist, venue, ticket cost, concert fun, and venue fun score
           </p>
         </div>
         <ConcertForm />

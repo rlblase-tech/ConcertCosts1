@@ -188,3 +188,58 @@ export function computeDashboardStats(concerts: Concert[]): DashboardStats {
     categoryTotals,
   };
 }
+
+export type FunAverageRow = {
+  name: string;
+  avgFun: number;
+  count: number;
+};
+
+/**
+ * Average fun score grouped by artist or venue.
+ * - artist group uses concert fun (fun_rating)
+ * - venue group uses venue_fun_rating
+ */
+export function averageFunBy(
+  concerts: Concert[],
+  key: "artist" | "venue"
+): FunAverageRow[] {
+  const groups = new Map<string, { sum: number; count: number }>();
+
+  for (const c of concerts) {
+    const name = (c[key] ?? "").trim();
+    if (!name) continue;
+    const rating = toNumber(
+      key === "venue"
+        ? (c.venue_fun_rating ?? c.fun_rating)
+        : c.fun_rating
+    );
+    const prev = groups.get(name) ?? { sum: 0, count: 0 };
+    groups.set(name, {
+      sum: prev.sum + rating,
+      count: prev.count + 1,
+    });
+  }
+
+  return Array.from(groups.entries())
+    .map(([name, { sum, count }]) => ({
+      name,
+      avgFun: sum / count,
+      count,
+    }))
+    .sort((a, b) => b.avgFun - a.avgFun || a.name.localeCompare(b.name));
+}
+
+/** Map RPC rows from venue_fun_averages / artist_fun_averages */
+export function mapRpcFunAverages(
+  rows: { name: string; avg_fun: number | string; show_count: number | string }[] | null
+): FunAverageRow[] {
+  if (!rows) return [];
+  return rows
+    .map((r) => ({
+      name: r.name,
+      avgFun: toNumber(r.avg_fun),
+      count: toNumber(r.show_count),
+    }))
+    .sort((a, b) => b.avgFun - a.avgFun || a.name.localeCompare(b.name));
+}

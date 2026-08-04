@@ -1,17 +1,11 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ConcertCard } from "@/components/ConcertCard";
 import { EmptyState } from "@/components/EmptyState";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 import type { Concert } from "@/lib/types";
 
 export default async function MyConcertsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data, error } = await supabase
     .from("concerts")
@@ -27,7 +21,8 @@ export default async function MyConcertsPage() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">My Concerts</h2>
             <p className="text-base-content/60 text-sm sm:text-base">
-              Every show you&apos;ve logged — only you can see these
+              Every show you&apos;ve logged — use Edit scores to change your
+              ratings. Only you can see these concerts.
             </p>
           </div>
           {concerts.length > 0 && (

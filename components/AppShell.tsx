@@ -8,6 +8,7 @@ import {
   Music2,
   PlusCircle,
   ListMusic,
+  Users,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +18,7 @@ const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/add", label: "Add Concert", icon: PlusCircle },
   { href: "/concerts", label: "My Concerts", icon: ListMusic },
+  { href: "/scores", label: "Community scores", icon: Users },
 ] as const;
 
 type Props = {
@@ -36,8 +38,8 @@ export function AppShell({ user, children }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-base-200">
-      <header className="navbar bg-base-100 shadow-sm border-b border-base-300 px-4 lg:px-8 gap-2 flex-wrap min-h-16">
+    <div className="app-photo-bg min-h-screen">
+      <header className="navbar bg-base-100/90 backdrop-blur-md shadow-sm border-b border-base-300 px-4 lg:px-8 gap-2 flex-wrap min-h-16">
         <div className="flex-1 min-w-0 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-content">
             <Music2 className="h-5 w-5" />
@@ -71,7 +73,7 @@ export function AppShell({ user, children }: Props) {
         </div>
       </header>
 
-      <div className="bg-base-100 border-b border-base-300 px-2 sm:px-6">
+      <div className="bg-base-100/85 backdrop-blur-md border-b border-base-300 px-2 sm:px-6">
         <nav className="tabs tabs-boxed bg-transparent gap-1 py-2 overflow-x-auto flex-nowrap">
           {NAV.map(({ href, label, icon: Icon }) => {
             const active =
@@ -93,7 +95,9 @@ export function AppShell({ user, children }: Props) {
       </div>
 
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        {children}
+        <div className="rounded-2xl border border-white/20 bg-base-100/25 backdrop-blur-md p-4 sm:p-6 shadow-xl">
+          {children}
+        </div>
       </main>
     </div>
   );
