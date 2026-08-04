@@ -1,16 +1,28 @@
 import { NextResponse } from "next/server";
-import { getSupabaseEnv } from "@/lib/env";
+import { getSupabaseEnv, probeSupabase } from "@/lib/env";
 
-/** Quick check that Vercel has Supabase env vars (does not expose secrets). */
+/** Open this on your Vercel site to see if env + Supabase connectivity work. */
 export async function GET() {
   const env = getSupabaseEnv();
+  const probe = await probeSupabase();
+
   return NextResponse.json({
-    ok: Boolean(env),
+    ok: probe.ok,
     hasUrl: Boolean(env?.url),
     hasKey: Boolean(env?.key),
-    urlHost: env?.url ? new URL(env.url).host : null,
-    hint: env
-      ? "Env looks set. If login still fails, check Supabase Auth Site URL."
-      : "Missing env vars. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel, then Redeploy.",
+    keyLength: env?.key?.length ?? 0,
+    urlHost: env?.url
+      ? (() => {
+          try {
+            return new URL(env.url).host;
+          } catch {
+            return "invalid-url";
+          }
+        })()
+      : null,
+    probe: probe.detail,
+    hint: probe.ok
+      ? "Supabase is reachable. If login still fails, check email/password or Confirm email setting."
+      : "Fix env vars or network, then Redeploy. Values must match Supabase Project Settings → API.",
   });
 }
